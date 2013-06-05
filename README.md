@@ -8,8 +8,10 @@ The ability to do this is somewhat recent to Windows.  For Windows 8 the support
 This demo focuses on bulk USB transfers.  
 
 
-##libusb Hacks
-....................
+##StellarisWare usblib Hacks
+I had to make some changes internal to usblib in order for this to work.  I tried to do so as elegantly as possible and within the conventions already established within usblib.  Rather than kludge in the code to respond to the 0xEE request directly in usblib/device/usbdenum.c, I instead opted to add a callback to tCustomHandlers.  This new callback is named    `pfnGetStringDescriptor` and is invoked whenever the USB host requests a string descriptor that is not in your static string descriptor table.
+ 
+- USB 2.0
 
 
 ##How it Works
@@ -17,6 +19,7 @@ This demo focuses on bulk USB transfers.
 
 ##How to Integrate This Into Your Project
 ....................
+- Replace usblib. (What about prebuild .libs?)
 
 ##TODO
 ....................
