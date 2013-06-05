@@ -214,7 +214,7 @@ static const tStdRequest g_psUSBDStdRequests[] =
 // Functions accessible by USBLIB clients.
 //
 //*****************************************************************************
-void MyRequestHandler(void *pvInstance, tUSBRequest *pUSBRequest);
+
 //*****************************************************************************
 //
 //! Initialize the USB library device control driver for a given hardware

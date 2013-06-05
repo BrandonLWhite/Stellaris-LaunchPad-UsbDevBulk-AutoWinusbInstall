@@ -437,8 +437,22 @@ RxHandler(void *pvCBData, unsigned long ulEvent,
     return(0);
 }
 
-#define VENDOR_REQUEST_GET_MS_OS_DESCRIPTOR 7 // Doesn't really matter what it is... something arbitrary.
+/**
+Windows is going to come asking for this special string descriptor.  If we say the magic words when it does,
+we can get the OS to self-install the WinUSB.sys driver for us!
+*/
+#define MS_OS_STRING_DESCRIPTOR 0xEE
 
+/**
+When Windows does ask for the 0xEE descriptor, in our response we must tell it what EP0 Vendor Request number
+to use in a follow-up get request.
+Windows doesn't care what the number is. It doesn't really matter what it is... something arbitrary.
+*/
+#define VENDOR_REQUEST_GET_MS_OS_DESCRIPTOR 7
+
+/**
+Transmit the argument buffer to the host, using the smaller of the buffer size or the length specified by the host.
+*/
 static void SendEP0Data(void * pSendBuffer, unsigned uBufferBytes, tUSBRequest *pUSBRequest)
 {
     const unsigned long ulSize = pUSBRequest->wLength < uBufferBytes ? pUSBRequest->wLength : uBufferBytes;
@@ -447,7 +461,14 @@ static void SendEP0Data(void * pSendBuffer, unsigned uBufferBytes, tUSBRequest *
     USBDCDSendDataEP0(0, pSendBuffer,ulSize);
 }
 
-static void MyRequestHandler(void *pvInstance, tUSBRequest *pUSBRequest)
+/**
+This handler will be invoked by usblib whenever the host performs a Vendor request.
+At this point the only thing we are expecting is the Microsoft Compatible ID Feature Descriptor request, for which
+will respond with the magic "WINUSB" descriptor.
+
+TODO: Need to handle Index 5 in order to furnish the serial number to Windows.
+*/
+static void VendorRequestHandler(void *pvInstance, tUSBRequest *pUSBRequest)
 {
 	UARTprintf("Received Vendor request: Type=0x%X Request=0x%X Value=0x%X Index=0x%X Length=0x%X\n", pUSBRequest->bmRequestType, pUSBRequest->bRequest, pUSBRequest->wValue, pUSBRequest->wIndex, pUSBRequest->wLength);
 
@@ -461,7 +482,9 @@ static void MyRequestHandler(void *pvInstance, tUSBRequest *pUSBRequest)
 
 	UARTprintf("Sending Microsoft Compatible ID Feature Descriptor 'WINUSB'\n");
 
-	// This is for index 4.  TODO : Need to handle Index 5 (Extended Properties OSFD)... It is never requested. (Actually it is.  Just need to blow out the VID/PID from windows.  It only asks once!)
+	// This is for index 4.
+	// TODO : Need to handle Index 5 (Extended Properties OSFD)... It is never requested. (Actually it is.  Just need
+	// to blow out the VID/PID from windows.  It only asks once!)
 	//
 	static unsigned char abyCIDFDesc[] =
 	{
@@ -481,10 +504,20 @@ static void MyRequestHandler(void *pvInstance, tUSBRequest *pUSBRequest)
     		pUSBRequest->wLength < sizeof abyCIDFDesc ? pUSBRequest->wLength : sizeof abyCIDFDesc);
 }
 
-static void MyGetStringDescriptorHandler(void *pvInstance, tUSBRequest *pUSBRequest)
+/**
+This handler is invoked from usblib whenever there is a request for a string descriptor who's index
+is not within the predefined table.
+This callback is not a standard part of usblib, but is proposed as such for allowing an elegant solution
+to responding to the 0xEE MS OS String Descriptor.
+
+The sole purpose of this handler in this demonstration is to recognize the 0xEE MS OS String Descriptor
+request and give Windows what it wants.
+ */
+static void GetStringDescriptorHandler(void *pvInstance, tUSBRequest *pUSBRequest)
 {
 	UARTprintf("Received String Descriptor request: 0x%X\n", pUSBRequest->wValue);
-	if((pUSBRequest->wValue & 0xFF) != 0xEE)
+
+	if((pUSBRequest->wValue & 0xFF) != MS_OS_STRING_DESCRIPTOR)
 	{
 		USBDCDStallEP0(0);
 		return;
@@ -502,6 +535,31 @@ static void MyGetStringDescriptorHandler(void *pvInstance, tUSBRequest *pUSBRequ
     };
 
  	SendEP0Data(abyOsDescriptor, sizeof abyOsDescriptor, pUSBRequest);
+}
+
+/**
+This kludge hijacks the USB version in usblib from 1.1 to 2.0, otherwise Windows will never bother to ask for the 0xEE
+OS String Descriptor.
+It doesn't make sense that usblib defaults to 1.1.  Certainly you can have FS devices under 2.0 spec!
+At the very least, usblib should allow a more elegant way to set this... but really I think it should just set it
+to 2.0 and be done with it.
+*/
+static void ConfigureUsb200()
+{
+	unsigned short * const pwUsbVersion = (unsigned short *)(g_sBulkDeviceInfo.pDeviceDescriptor + 2);
+	*pwUsbVersion = 0x200;
+}
+
+/**
+This will setup the callbacks needed to handle Window's attempts to get the MS OS String Descriptor and
+Microsoft Compatible ID Feature Descriptor that ultimately leads to the automatic installation of the
+WinUSB.sys driver.
+ */
+static void ConfigureAutoWinUsbInstall()
+{
+	ConfigureUsb200();
+	g_sBulkDeviceInfo.sCallbacks.pfnRequestHandler = VendorRequestHandler;
+	g_sBulkDeviceInfo.sCallbacks.pfnGetStringDescriptor = GetStringDescriptorHandler;
 }
 
 //*****************************************************************************
@@ -578,20 +636,6 @@ main(void)
     //
     UARTprintf("Configuring USB\n");
 
-    // TODO BW : My stuff....
-    {
-    	// Hijack the default USB version from 1.1 to 2.0, otherwise Windows will never bother to ask for the 0xEE
-    	// OS String Descriptor.   It doesn't make sense that usblib defaults to 1.1.  Certainly you can have
-    	// FS devices under 2.0 spec!
-    	//
-    	unsigned short * pwUsbVersion = (unsigned short *)(g_sBulkDeviceInfo.pDeviceDescriptor + 2);
-    	*pwUsbVersion = 0x200;
-
-    	g_sBulkDeviceInfo.sCallbacks.pfnRequestHandler = MyRequestHandler;
-    	//g_sBulkDeviceInfo.sCallbacks.pfnGetDescriptor = MyGetDescriptorRequestHandler;
-    	g_sBulkDeviceInfo.sCallbacks.pfnGetStringDescriptor = MyGetStringDescriptorHandler;
-    }
-
     //
     // Initialize the transmit and receive buffers.
     //
@@ -602,6 +646,8 @@ main(void)
     // Set the USB stack mode to Device mode with VBUS monitoring.
     //
     USBStackModeSet(0, USB_MODE_FORCE_DEVICE, 0);
+
+    ConfigureAutoWinUsbInstall();
 
     //
     // Pass our device information to the USB library and place the device

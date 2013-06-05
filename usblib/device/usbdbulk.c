@@ -32,7 +32,6 @@
 #include "usblib/device/usbdevice.h"
 #include "usblib/device/usbdbulk.h"
 #include "usblib/usblibpriv.h"
-#include "utils/uartstdio.h"
 
 //*****************************************************************************
 //
@@ -813,9 +812,6 @@ void *
 USBDBulkInit(unsigned long ulIndex, const tUSBDBulkDevice *psDevice)
 {
     void *pvInstance;
-
-    UARTStdioInit(0);
-    UARTprintf("USBDBulkInit\n");
 
     //
     // Check parameter validity.
