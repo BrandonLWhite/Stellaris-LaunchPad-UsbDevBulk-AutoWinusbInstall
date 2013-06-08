@@ -57,9 +57,8 @@ All I've done is taken the stock "usb_dev_bulk" project and rigged it up with ca
 
 
 ##TODO
-- I need to add the code to respond to the Interface GUID request.  
 - Fix other build targets & platforms.  At this point I've only configured Debug.
-- Add prebuilt lib binaries.
+- Add prebuilt usblib binaries.
 - C# host application to move some bulk traffic around as an alternative to TI's C example.
 
 ##References
