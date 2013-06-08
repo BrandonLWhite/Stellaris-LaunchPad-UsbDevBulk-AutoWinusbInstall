@@ -12,7 +12,7 @@ This demo focuses on bulk USB transfers.  It is derived from the TI StellarisWar
 ##How it Works
 In a nutshell, the first time Windows enumerates a device with a particular VID & PID, it will send a "probe" request for a magic string descriptor at index 0xEE called the "Microsoft OS String Descriptor".  Most devices will just reject this request, but if you respond to correctly, Windows will then follow up with additional Vendor Requests.  One of these special Vendor Requests in particular, the "Microsoft Compatibility ID Feature Descriptor", allows your firmware to specify to Windows to load a certain generic driver.  Recently Microsoft added the WinUSB.sys driver to the list of Compatibility IDs, and so that's what we're going to leverage here.
 
-I won't reiterate all of the gory details here.  To tell you the truth, after poring over the relative MSDN docs the process is much simpler than MSDN makes it seem.  Other folks have akready distilled down the information and made it much less confusing.  If you are interested in the details I suggest you check out the [WCID Devices page](https://github.com/pbatard/libwdi/wiki/WCID-Devices#wiki-Other) for [libwdi](https://github.com/pbatard/libwdi).  It was really helpful to me in getting the kinks worked out and really helped clarify some of the aspects I wasn't getting out of the MSDN docs. 
+I won't reiterate all of the gory details here.  To tell you the truth, after poring over the relative MSDN docs the process is much simpler than MSDN makes it seem.  Other folks have already distilled down the information and made it much less confusing.  If you are interested in the details I suggest you check out the [WCID Devices page](https://github.com/pbatard/libwdi/wiki/WCID-Devices#wiki-Other) for [libwdi](https://github.com/pbatard/libwdi).  It was really helpful to me in getting the kinks worked out and really helped clarify some of the aspects I wasn't getting out of the MSDN docs. 
 
 
 
@@ -26,7 +26,7 @@ Fortunately I was able to get this done from outside of usblib, since the global
 ````C
 unsigned short * const pwUsbVersion = (unsigned short *)(g_sBulkDeviceInfo.pDeviceDescriptor + 2);
 *pwUsbVersion = 0x200;
-````	
+````  
 
 Other than that, usblib is the same.  I'd really like to see TI roll these changes into usblib.  The Stellaris demos already involve use of WinUSB.sys, and this would just make it that much better and effortless.
 
@@ -34,22 +34,41 @@ Other than that, usblib is the same.  I'd really like to see TI roll these chang
 ##How to Integrate This Into Your Project
 All I've done is taken the stock "usb_dev_bulk" project and rigged it up with callback handlers to induce the automatic installation of WinUSB.sys, using my modified usblib.  You should be able to build and run this code on your LaunchPad and mess around with it the same as the stock TI demo project, using the "usb_bulk_example" Visual C++ project supplied in StellarisWare.
 
-- Rename StellarisWare/usblib directory.
-- Snippets from usb_dev_bulk.c
-- Note about registry deletes.
-- Change VID/PID or uninstall the .INF furnished by TI.
+1. Copy the usb_dev_bulk and usblib folders to a subdirectory of your choosing in your CCS workspace, then import the two projects.  You’ll want to select the cm4f project (for CCS) when asked – that’s what will run on your Stellaris LaunchPad.
+
+2. Then you’ll need to rename or relocate the c:/ti/StellarisWare/usblib (or wherever it is on your system) to avoid #include conflicts.  Don’t forget to put this back later on if you need to use the stock usblib.
+
+3. You can build and run the usb_dev_bulk project if you just want to do a simple test run. If you want to add this functionality to an existing project, then follow these additional steps.
+
+4. In your project, you’ll need to add the following references to the modified usblib:
+	1. Add a project dependency to usblib.
+	2. Add a #include path to the directory containing usblib.
+	3. Add a linker input to usblib-cm4f.lib
+
+5. Copy the code from usb_dev_bulk.c surrounded by the `/** @region "WinUSB auto-load routines" */` `/** @endregion */` comments into a suitable location in your target project.
+
+6. Add a call to `ConfigureAutoWinUsbInstall()` at a suitable place in your code.  Right before the call to `USBDBulkInit` works perfect.
+
+7. Assuming that you have previously enumerated and loaded a driver (WinUSB or otherwise) for your device, you’ll need to take some steps to get Windows to forget about it so that next time it will go through the full discovery process and probe for 0xE, etc.  Otherwise if Windows already knows exactly what to do for that VID/PID then it won’t bother to initiate the WinUSB auto-load process.  You can either:
+	1. Change your VID/PID to something new.  Or,
+	2. Delete the device entry in Device Manager and then delete the following registry keys:
+		1. In `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\usbflags` delete the key for your device that is in the form `VID+PID+BCD_RELEASE_NUMBER`
+		2. In `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Enum\USB` delete the key in the form `VID_####&PID_####` for your device.
 
 
 ##TODO
-....................
-- Respond to the Interface GUID request.  
-- Add prebuilt binaries.
-- C# host application to move some bulk traffic around.
+- I need to add the code to respond to the Interface GUID request.  
+- Fix other build targets & platforms.  At this point I've only configured Debug.
+- Add prebuilt lib binaries.
+- C# host application to move some bulk traffic around as an alternative to TI's C example.
 
 ##References
-https://github.com/pbatard/libwdi/wiki/WCID-Devices#wiki-Other **Very helpful**
+https://github.com/pbatard/libwdi/wiki/WCID-Devices#wiki-Other  **Very helpful**
+
 http://msdn.microsoft.com/en-us/library/windows/hardware/gg463179.aspx
+
 http://msdn.microsoft.com/en-us/library/windows/hardware/hh450799(v=vs.85).aspx
+
 
 ##History
 2013-06-04 Initial commit of functional code.
