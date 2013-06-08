@@ -437,6 +437,8 @@ RxHandler(void *pvCBData, unsigned long ulEvent,
     return(0);
 }
 
+/** @region "WinUSB auto-load routines" */
+
 /**
 Windows is going to come asking for this special string descriptor.  If we say the magic words when it does,
 we can get the OS to self-install the WinUSB.sys driver for us!
@@ -561,6 +563,8 @@ static void ConfigureAutoWinUsbInstall()
 	g_sBulkDeviceInfo.sCallbacks.pfnRequestHandler = VendorRequestHandler;
 	g_sBulkDeviceInfo.sCallbacks.pfnGetStringDescriptor = GetStringDescriptorHandler;
 }
+
+/** @endregion */
 
 //*****************************************************************************
 //
