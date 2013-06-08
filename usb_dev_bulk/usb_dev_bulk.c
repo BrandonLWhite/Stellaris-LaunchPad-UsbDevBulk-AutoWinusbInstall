@@ -455,55 +455,112 @@ Windows doesn't care what the number is. It doesn't really matter what it is... 
 /**
 Transmit the argument buffer to the host, using the smaller of the buffer size or the length specified by the host.
 */
-static void SendEP0Data(void * pSendBuffer, unsigned uBufferBytes, tUSBRequest *pUSBRequest)
+static void SendEP0Data(unsigned char * pbySendBuffer, unsigned uBufferBytes, tUSBRequest *pUSBRequest)
 {
     const unsigned long ulSize = pUSBRequest->wLength < uBufferBytes ? pUSBRequest->wLength : uBufferBytes;
     UARTprintf("Sending %u bytes\n", ulSize);
 
-    USBDCDSendDataEP0(0, pSendBuffer,ulSize);
+    USBDCDSendDataEP0(0, pbySendBuffer, ulSize);
+}
+
+/**
+Inspect the EP0 Vendor Request details and handle according to what is recognized.
+If the request is indeed handled, pbySendBuffer_out will be set to the buffer to send to the host, along with
+puBufferBytes_out indicating the number of bytes to send.
+Otherwise, these two values will not be changed.
+
+We are expecting the "Microsoft Compatible ID Feature Descriptor" request, for which
+we'll respond with the magic "WINUSB" descriptor, as well as the "Microsoft Extended Properties Feature Descriptor"
+request that we will respond with the DeviceInterfaceGUID.
+*/
+static void DispatchVendorRequest(tUSBRequest *pUSBRequest, unsigned char ** pbySendBuffer_out, unsigned * puBufferBytes_out)
+{
+	if((pUSBRequest->bmRequestType & USB_RTYPE_TYPE_M) != USB_RTYPE_VENDOR) return;
+
+	if(VENDOR_REQUEST_GET_MS_OS_DESCRIPTOR == pUSBRequest->bRequest &&
+		4 == pUSBRequest->wIndex &&
+		USB_RTYPE_DEVICE == (pUSBRequest->bmRequestType & USB_RTYPE_RECIPIENT_M))
+	{
+		UARTprintf("Sending Microsoft Compatible ID Feature Descriptor 'WINUSB'\n");
+
+		static unsigned char abyCIDFDesc[] =
+		{
+			0x28, 0x00, 0x00, 0x00,	// DWORD (LE)	 Descriptor length (40 bytes)
+			0x00, 0x01,	 			// BCD WORD (LE)	 Version ('1.0')
+			0x04, 0x00,				// WORD (LE)	 Compatibility ID Descriptor index (0x0004)
+			0x01, 					// BYTE	 Number of sections (1)
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 7 BYTES	 Reserved
+			0x00, //	 BYTE	 Interface Number (Interface #0)
+			0x01, //	 BYTE	 Reserved
+			0x57, 0x49, 0x4E, 0x55, 0x53, 0x42, 0x00, 0x00, //8 BYTES ASCII String Compatible ID ("WINUSB\0\0")
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //8 BYTES ASCII String	 Sub-Compatible ID (unused)
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00 // 6 BYTES Reserved
+		};
+
+		*pbySendBuffer_out = abyCIDFDesc;
+		*puBufferBytes_out = sizeof abyCIDFDesc;
+	}
+	else if(VENDOR_REQUEST_GET_MS_OS_DESCRIPTOR == pUSBRequest->bRequest &&
+		5 == pUSBRequest->wIndex &&
+		USB_RTYPE_INTERFACE == (pUSBRequest->bmRequestType & USB_RTYPE_RECIPIENT_M))
+	{
+		UARTprintf("Sending Microsoft Extended Properties Feature Descriptor\n");
+
+		// This sends the Device Interface GUID from TI's usb_dev_bulk.inf
+		//
+		static unsigned char abyEPFDesc[] =
+		{
+			0x8e, 0x00, 0x00, 0x00,	// DWORD (LE)	 Descriptor length (242 bytes)
+			0x00, 0x01,	 			// BCD WORD (LE) Version ('1.0')
+			0x05, 0x00,				// WORD (LE)	 Extended Property Descriptor index (0x0005)
+			0x01, 0x00,				// WORD          Number of sections (1)
+			0x84, 0x00, 0x00, 0x00,	// DWORD (LE)	 Size of the property section (132 bytes)
+			0x01, 0x00, 0x00, 0x00,	// DWORD (LE)	 Property data type (1 = Unicode REG_SZ)
+			0x28, 0x00,				// WORD (LE)	 Property name length (40 bytes)
+									// NULL-terminated Unicode String (LE)	 Property Name (L"DeviceInterfaceGUID")
+			'D',0,'e',0,'v',0,'i',0,'c',0,'e',0,'I',0,'n',0,'t',0,'e',0,'r',0,'f',0,'a',0,'c',0,'e',0,'G',0,'U',0,'I',0,'D',0, 0x00, 0x00,
+			0x4e, 0x00, 0x00, 0x00,	// DWORD (LE)	 Property data length (78 bytes)
+
+									// NULL-terminated Unicode String (LE)
+									// Property Name ("{6E45736A-2B1B-4078-B772-B3AF2B6FDE1C}")
+			'{',0,'6',0,'E',0,'4',0,'5',0,'7',0,'3',0,'6',0,'A',0,'-',0,'2',0,'B',0,'1',0,'B',0,'-',0,'4',0,'0',0,'7',0,'8',0,'-',0,'B',0,'7',0,'7',0,'2',0,'-',0,'B',0,'3',0,'A',0,'F',0,'2',0,'B',0,'6',0,'F',0,'D',0,'E',0,'1',0,'C',0,'}',0,
+			0x00,0x00
+		};
+
+		*pbySendBuffer_out = abyEPFDesc;
+		*puBufferBytes_out = sizeof abyEPFDesc;
+	}
 }
 
 /**
 This handler will be invoked by usblib whenever the host performs a Vendor request.
-At this point the only thing we are expecting is the Microsoft Compatible ID Feature Descriptor request, for which
-will respond with the magic "WINUSB" descriptor.
-
-TODO: Need to handle Index 5 in order to furnish the serial number to Windows.
+We are expecting the "Microsoft Compatible ID Feature Descriptor" request, for which
+we'll respond with the magic "WINUSB" descriptor, as well as the "Microsoft Extended Properties Feature Descriptor"
+request that we will respond with the DeviceInterfaceGUID.
 */
 static void VendorRequestHandler(void *pvInstance, tUSBRequest *pUSBRequest)
 {
-	UARTprintf("Received Vendor request: Type=0x%X Request=0x%X Value=0x%X Index=0x%X Length=0x%X\n", pUSBRequest->bmRequestType, pUSBRequest->bRequest, pUSBRequest->wValue, pUSBRequest->wIndex, pUSBRequest->wLength);
+	unsigned char * pbySendBuffer = 0;
+	unsigned uBufferBytes = 0;
+
+	UARTprintf("Received Vendor request: Type=0x%X Request=0x%X Value=0x%X Index=0x%X Length=0x%X\n",
+			pUSBRequest->bmRequestType,
+			pUSBRequest->bRequest,
+			pUSBRequest->wValue,
+			pUSBRequest->wIndex,
+			pUSBRequest->wLength);
 
 	MAP_USBDevEndpointDataAck(USB0_BASE, USB_EP_0, false);
 
-	if(VENDOR_REQUEST_GET_MS_OS_DESCRIPTOR != pUSBRequest->bRequest)
+	DispatchVendorRequest(pUSBRequest, &pbySendBuffer, &uBufferBytes);
+	if(pbySendBuffer && uBufferBytes)
+	{
+		SendEP0Data(pbySendBuffer, uBufferBytes, pUSBRequest);
+	}
+	else
 	{
 		USBDCDStallEP0(0);
-		return;
 	}
-
-	UARTprintf("Sending Microsoft Compatible ID Feature Descriptor 'WINUSB'\n");
-
-	// This is for index 4.
-	// TODO : Need to handle Index 5 (Extended Properties OSFD)... It is never requested. (Actually it is.  Just need
-	// to blow out the VID/PID from windows.  It only asks once!)
-	//
-	static unsigned char abyCIDFDesc[] =
-	{
-		0x28, 0x00, 0x00, 0x00,	// DWORD (LE)	 Descriptor length (40 bytes)
-		0x00, 0x01,	 			// BCD WORD (LE)	 Version ('1.0')
-		0x04, 0x00,				// WORD (LE)	 Compatibility ID Descriptor index (0x0004)
-		0x01, 					// BYTE	 Number of sections (1)
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 7 BYTES	 Reserved
-		0x00, //	 BYTE	 Interface Number (Interface #0)
-		0x01, //	 BYTE	 Reserved
-		0x57, 0x49, 0x4E, 0x55, 0x53, 0x42, 0x00, 0x00, //8 BYTES ASCII String Compatible ID ("WINUSB\0\0")
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, //8 BYTES ASCII String	 Sub-Compatible ID (unused)
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00 // 6 BYTES Reserved
-	};
-
-    USBDCDSendDataEP0(0, abyCIDFDesc,
-    		pUSBRequest->wLength < sizeof abyCIDFDesc ? pUSBRequest->wLength : sizeof abyCIDFDesc);
 }
 
 /**
