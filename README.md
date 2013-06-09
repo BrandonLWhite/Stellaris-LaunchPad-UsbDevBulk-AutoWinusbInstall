@@ -62,7 +62,7 @@ All I've done is taken the stock "usb_dev_bulk" project and rigged it up with ca
 - C# host application to move some bulk traffic around as an alternative to TI's C example.
 
 ##References
-https://github.com/pbatard/libwdi/wiki/WCID-Devices#wiki-Other  **Very helpful**
+https://github.com/pbatard/libwdi/wiki/WCID-Devices  **Very helpful**
 
 http://msdn.microsoft.com/en-us/library/windows/hardware/gg463179.aspx
 
