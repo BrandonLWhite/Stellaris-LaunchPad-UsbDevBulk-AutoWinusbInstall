@@ -510,21 +510,20 @@ static void DispatchVendorRequest(tUSBRequest *pUSBRequest, unsigned char ** pby
 		//
 		static unsigned char abyEPFDesc[] =
 		{
-			0x8e, 0x00, 0x00, 0x00,	// DWORD (LE)	 Descriptor length (242 bytes)
+			0x92, 0x00, 0x00, 0x00,	// DWORD (LE)	 Descriptor length (146 bytes)
 			0x00, 0x01,	 			// BCD WORD (LE) Version ('1.0')
 			0x05, 0x00,				// WORD (LE)	 Extended Property Descriptor index (0x0005)
 			0x01, 0x00,				// WORD          Number of sections (1)
-			0x84, 0x00, 0x00, 0x00,	// DWORD (LE)	 Size of the property section (132 bytes)
-			0x01, 0x00, 0x00, 0x00,	// DWORD (LE)	 Property data type (1 = Unicode REG_SZ)
-			0x28, 0x00,				// WORD (LE)	 Property name length (40 bytes)
-									// NULL-terminated Unicode String (LE)	 Property Name (L"DeviceInterfaceGUID")
-			'D',0,'e',0,'v',0,'i',0,'c',0,'e',0,'I',0,'n',0,'t',0,'e',0,'r',0,'f',0,'a',0,'c',0,'e',0,'G',0,'U',0,'I',0,'D',0, 0x00, 0x00,
-			0x4e, 0x00, 0x00, 0x00,	// DWORD (LE)	 Property data length (78 bytes)
+			0x88, 0x00, 0x00, 0x00,	// DWORD (LE)	 Size of the property section (136 bytes)
+			0x07, 0x00, 0x00, 0x00,	// DWORD (LE)	 Property data type (7 = Unicode REG_MULTI_SZ)
+			0x2A, 0x00,				// WORD (LE)	 Property name length (42 bytes)
+									// NULL-terminated Unicode String (LE)	 Property Name (L"DeviceInterfaceGUIDs")
+			'D',0,'e',0,'v',0,'i',0,'c',0,'e',0,'I',0,'n',0,'t',0,'e',0,'r',0,'f',0,'a',0,'c',0,'e',0,'G',0,'U',0,'I',0,'D',0,'s',0, 0x00, 0x00,
+			0x50, 0x00, 0x00, 0x00,	// DWORD (LE)	 Property data length (80 bytes)
 
-									// NULL-terminated Unicode String (LE)
+									// NULL-terminated Unicode String (LE), followed by another Unicode NULL
 									// Property Name ("{6E45736A-2B1B-4078-B772-B3AF2B6FDE1C}")
-			'{',0,'6',0,'E',0,'4',0,'5',0,'7',0,'3',0,'6',0,'A',0,'-',0,'2',0,'B',0,'1',0,'B',0,'-',0,'4',0,'0',0,'7',0,'8',0,'-',0,'B',0,'7',0,'7',0,'2',0,'-',0,'B',0,'3',0,'A',0,'F',0,'2',0,'B',0,'6',0,'F',0,'D',0,'E',0,'1',0,'C',0,'}',0,
-			0x00,0x00
+			'{',0,'6',0,'E',0,'4',0,'5',0,'7',0,'3',0,'6',0,'A',0,'-',0,'2',0,'B',0,'1',0,'B',0,'-',0,'4',0,'0',0,'7',0,'8',0,'-',0,'B',0,'7',0,'7',0,'2',0,'-',0,'B',0,'3',0,'A',0,'F',0,'2',0,'B',0,'6',0,'F',0,'D',0,'E',0,'1',0,'C',0,'}',0, 0x00,0x00, 0x00,0x00
 		};
 
 		*pbySendBuffer_out = abyEPFDesc;

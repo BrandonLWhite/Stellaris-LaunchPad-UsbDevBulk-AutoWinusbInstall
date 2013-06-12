@@ -70,6 +70,15 @@ http://msdn.microsoft.com/en-us/library/windows/hardware/hh450799(v=vs.85).aspx
 
 
 ##History
-2013-06-08 Completed implementation of the Microsoft Extended Properties Feature Descriptor in order to send the DeviceInterfaceGUID to the host.
+<dl>
+  <dt>2013-06-11</dt>
+  <dd>
+	Completed implementation of the Microsoft Extended Properties Feature Descriptor in order to send the DeviceInterfaceGUID to the host.
+  </dd>
 
-2013-06-04 Initial commit of functional code.
+  <dt>2013-06-08</dt>
+  <dd>Completed implementation of the Microsoft Extended Properties Feature Descriptor in order to send the DeviceInterfaceGUID to the host.</dd>
+  
+  <dt>2013-06-04</dt>
+  <dd>Initial commit of functional code.</dd>
+</dl>
