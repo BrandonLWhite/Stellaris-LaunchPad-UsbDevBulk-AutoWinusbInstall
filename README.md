@@ -5,7 +5,7 @@ This is a working demonstration of how to automatically install the generic Wind
 
 The ability to do this is somewhat recent to Windows.  For Windows 8 the support is fully baked in, but for prior versions Windows will gladly pull down what it needs via Windows Update.  I've read that this will work as far back as WinXP SP3, but I have not personally tried it.  I developed this demo on Win7 x64, using Code Composer Studio v5.2.1.00018 and StellarisWare version 9453.
 
-This demo focuses on bulk USB transfers.  It is derived from the TI StellarisWare "usb_dev_bulk" example.  
+This demo focuses on bulk USB transfers.  It is derived from the TI StellarisWare "usb_dev_bulk" example.  As an added bonus, a C# host application example is included as an alternative to the C example app provided by TI.
 
 
 
@@ -32,7 +32,7 @@ Other than that, usblib is the same.  I'd really like to see TI roll these chang
 
 
 ##How to Integrate This Into Your Project
-All I've done is taken the stock "usb_dev_bulk" project and rigged it up with callback handlers to induce the automatic installation of WinUSB.sys, using my modified usblib.  You should be able to build and run this code on your LaunchPad and mess around with it the same as the stock TI demo project, using the "usb_bulk_example" Visual C++ project supplied in StellarisWare.
+All I've done is taken the stock "usb_dev_bulk" project and rigged it up with callback handlers to induce the automatic installation of WinUSB.sys, using my modified usblib.  You should be able to build and run this code on your LaunchPad and mess around with it the same as the stock TI demo project, using the "usb_bulk_example" Visual C++ project supplied in StellarisWare.  You can also move some traffic around with the C# example host app I've included too (see below).
 
 1. Copy the usb_dev_bulk and usblib folders to a subdirectory of your choosing in your CCS workspace, then import the two projects.  You’ll want to select the cm4f project (for CCS) when asked – that’s what will run on your Stellaris LaunchPad.
 
@@ -55,11 +55,30 @@ All I've done is taken the stock "usb_dev_bulk" project and rigged it up with ca
 		1. In `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\usbflags` delete the key for your device that is in the form `VID+PID+BCD_RELEASE_NUMBER`
 		2. In `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Enum\USB` delete the key in the form `VID_####&PID_####` for your device.
 
-##Using the Example Host Application
+##The C# Example Host Application
+In the `HostApp` subdirectory there is a simple C# .NET host application that allows you to send and receive data with your device.  It's nothing spectacular, just a bare-bones WinForms app with an edit box, a Transmit button, and a logging box.  The functionality is essentially the same as the TI supplied C usb_bulk_example console app.  
+
+I've opted to use the [LibUsbDotNet](http://sourceforge.net/projects/libusbdotnet/) library to provide the interface to the WinUSB driver.  Though this library hasn't been updated in a few years, it seems to do it's job well and brings the benefit of automatically working with multiple low-level USB layers, WinUSB being one of them.  It will also recognize and work with [libusb](http://www.libusb.org/) on Linux/Mono.  My expectation is that my device and application will work on Linux without code changes -- but I haven't gone down that path yet.  Wouldn't that be cool?! (Drop me a line if you have any insight/advice on this).
+
+####DeviceInterfaceGUIDs vs. DeviceInterfaceGUID
+In my original firmware, I had it sending `DeviceInterfaceGUID` (REG_SZ) to the host when asked for the Microsoft Extended Properties Feature Descriptor just like the MSDN docs say to do.  When trying to use LibUsbDotNet, I immediately ran into problems getting it to find my device.  It turns out that LibUsbDotNet is hardcoded to look for `DeviceInterfaceGUIDs` as part of locating WinUSB devices.  As such, it won't identify a WinUSB device that sends `DeviceInterfaceGUID`.  
+
+What I learned is that in the years prior, whenever you created an .INF file to load WinUSB the old way, you included something like this:
+```
+[Dev_AddReg]
+HKR,,DeviceInterfaceGUIDs,0x10000,"{6E45736A-2B1B-4078-B772-B3AF2B6FDE1C}"
+```
+That's actually straight out of the TI usb_dev_bulk.inf file, but there's plenty of examples out there doing the same thing. So it's perfectly normal, in fact I'll go so far as to say de facto, that you specify the multiple DeviceInterfaceGUIDs containing exactly one GUID.
+
+So I changed the firmware to instead send `DeviceInterfaceGUIDs` REG_MULTI_SZ with just the one GUID.  LibUsbDotNet worked perfectly after that.
+
+Interestingly, the TI example app "usb_bulk_example" works either way... `DeviceInterfaceGUID` (REG_SZ) or `DeviceInterfaceGUIDs` (REG_MULTI_SZ).  I believe this is because it hands the GUID to Windows SetupDi directly, and SetupDi is cool with either descriptor -- it knows what's going on.
+
 
 ##TODO
 - Fix other build targets & platforms.  At this point I've only configured Debug.
 - Add prebuilt usblib binaries.
+- Investigate support on Linux, most likely using [libusb](http://www.libusb.org/).  What FW changes will necessary, if any?  Is the C# host app good to go as-is on Mono?
 
 ##References
 https://github.com/pbatard/libwdi/wiki/WCID-Devices  **Very helpful**
@@ -75,7 +94,7 @@ http://msdn.microsoft.com/en-us/library/windows/hardware/hh450799(v=vs.85).aspx
   <dd>
   	<ul>
 	<li>Added C# host application example using LibUsbDotNet.</li>
-	<li>Changed firmware to send "InterfaceGUIDs" (plural) as a REG_SZ_MULTI instead of "InterfaceGUID" as a REG_SZ. This complies with de facto standards established by prior .INF files for loading the WinUSB driver, and alllows LibUsbDotNet to locate the device.</li>
+	<li>Changed firmware to send "DeviceInterfaceGUIDs" (plural) as a REG_MULTI_SZ instead of "DeviceInterfaceGUID" as a REG_SZ. This complies with de facto standards established by prior .INF files for loading the WinUSB driver, and alllows LibUsbDotNet to locate the device.</li>
 	</ul>
   </dd>
 
