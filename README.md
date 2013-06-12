@@ -55,11 +55,11 @@ All I've done is taken the stock "usb_dev_bulk" project and rigged it up with ca
 		1. In `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\usbflags` delete the key for your device that is in the form `VID+PID+BCD_RELEASE_NUMBER`
 		2. In `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Enum\USB` delete the key in the form `VID_####&PID_####` for your device.
 
+##Using the Example Host Application
 
 ##TODO
 - Fix other build targets & platforms.  At this point I've only configured Debug.
 - Add prebuilt usblib binaries.
-- C# host application to move some bulk traffic around as an alternative to TI's C example.
 
 ##References
 https://github.com/pbatard/libwdi/wiki/WCID-Devices  **Very helpful**
@@ -73,7 +73,10 @@ http://msdn.microsoft.com/en-us/library/windows/hardware/hh450799(v=vs.85).aspx
 <dl>
   <dt>2013-06-11</dt>
   <dd>
-	Completed implementation of the Microsoft Extended Properties Feature Descriptor in order to send the DeviceInterfaceGUID to the host.
+  	<ul>
+	<li>Added C# host application example using LibUsbDotNet.</li>
+	<li>Changed firmware to send "InterfaceGUIDs" (plural) as a REG_SZ_MULTI instead of "InterfaceGUID" as a REG_SZ. This complies with de facto standards established by prior .INF files for loading the WinUSB driver, and alllows LibUsbDotNet to locate the device.</li>
+	</ul>
   </dd>
 
   <dt>2013-06-08</dt>
