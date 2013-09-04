@@ -68,19 +68,19 @@ What I learned is that in the years prior, whenever you created an .INF file to 
 [Dev_AddReg]
 HKR,,DeviceInterfaceGUIDs,0x10000,"{6E45736A-2B1B-4078-B772-B3AF2B6FDE1C}"
 ```
-That's actually straight out of the TI usb_dev_bulk.inf file, but there's plenty of examples out there doing the same thing. So it's perfectly normal, in fact I'll go so far as to say de facto, that you specify the multiple DeviceInterfaceGUIDs containing exactly one GUID.
+That's actually straight out of the TI usb_dev_bulk.inf file, but there's plenty of examples out there doing the same thing. So it's perfectly normal, in fact I'll go so far as to say de facto, that you specify the multiple-form `DeviceInterfaceGUIDs` containing exactly one GUID.
 
 So I changed the firmware to instead send `DeviceInterfaceGUIDs` REG_MULTI_SZ with just the one GUID.  LibUsbDotNet worked perfectly after that.
 
 Interestingly, the TI example app "usb_bulk_example" works either way... `DeviceInterfaceGUID` (REG_SZ) or `DeviceInterfaceGUIDs` (REG_MULTI_SZ).  I believe this is because it hands the GUID to Windows SetupDi directly, and SetupDi is cool with either descriptor -- it knows what's going on.
 
 ####Linux
+Using [libusb](http://www.libusb.org/).
 ![HostApp Linux Screenshot](assets/HostAppLinux.png)
 
 ##TODO
 - Fix other build targets & platforms.  At this point I've only configured Debug.
 - Add prebuilt usblib binaries.
-- Investigate support on Linux, most likely using [libusb](http://www.libusb.org/).  What FW changes will necessary, if any?  Is the C# host app good to go as-is on Mono?
 
 ##References
 https://github.com/pbatard/libwdi/wiki/WCID-Devices  **Very helpful**
@@ -92,6 +92,9 @@ http://msdn.microsoft.com/en-us/library/windows/hardware/hh450799(v=vs.85).aspx
 
 ##History
 <dl>
+  <dt>2013-09-04</dt>
+	<dd>Verified that the HostApp runs on Linux and communicates with the device!  I had to make a few minor changes in the HostApp code to get there.  I'll update the docs pertaining to Linux and also the prerequisite steps I had to take.</dd>
+
   <dt>2013-06-11</dt>
   <dd>
   	<ul>
