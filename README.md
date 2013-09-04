@@ -74,6 +74,8 @@ So I changed the firmware to instead send `DeviceInterfaceGUIDs` REG_MULTI_SZ wi
 
 Interestingly, the TI example app "usb_bulk_example" works either way... `DeviceInterfaceGUID` (REG_SZ) or `DeviceInterfaceGUIDs` (REG_MULTI_SZ).  I believe this is because it hands the GUID to Windows SetupDi directly, and SetupDi is cool with either descriptor -- it knows what's going on.
 
+####Linux
+![HostApp Linux Screenshot](assets/HostAppLinux.png)
 
 ##TODO
 - Fix other build targets & platforms.  At this point I've only configured Debug.
