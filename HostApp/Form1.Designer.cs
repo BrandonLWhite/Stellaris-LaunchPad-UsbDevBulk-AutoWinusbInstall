@@ -83,6 +83,7 @@
             this.Name = "Form1";
             this.Text = "Stellaris LaunchPad USB Bulk Device Demo";
             this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.Form1_FormClosed);
+            this.Shown += new System.EventHandler(this.Form1_Shown);
             this.ResumeLayout(false);
             this.PerformLayout();
 

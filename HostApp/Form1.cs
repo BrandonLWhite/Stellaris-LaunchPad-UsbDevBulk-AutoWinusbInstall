@@ -53,8 +53,6 @@ public partial class Form1 : Form
 
         m_usbNotifier = LibUsbDotNet.DeviceNotify.DeviceNotifier.OpenDeviceNotifier();
         m_usbNotifier.OnDeviceNotify += new EventHandler<LibUsbDotNet.DeviceNotify.DeviceNotifyEventArgs>(UsbNotifier_OnDeviceNotify);
-
-        OpenUsbDevice();
     }
 
     /// <summary>
@@ -64,6 +62,9 @@ public partial class Form1 : Form
     /// </summary>
     void UsbNotifier_OnDeviceNotify(object sender, LibUsbDotNet.DeviceNotify.DeviceNotifyEventArgs eventArgs)
     {
+        Log("Device notification event: {0} VID={1:X4} PID={2:X4}", 
+            eventArgs.EventType, eventArgs.Device.IdVendor, eventArgs.Device.IdProduct);
+
         // Ignore events for other devices
         //
         if (m_usbFinder.Vid != eventArgs.Device.IdVendor) return;
@@ -96,16 +97,24 @@ public partial class Form1 : Form
 
         m_usbDevice = LibUsbDotNet.UsbDevice.OpenUsbDevice(m_usbFinder);
         
-        if (m_usbDevice != null)
+        if (m_usbDevice == null)
         {
-            transmitButton.Enabled = true;
-
-            m_usbReader = m_usbDevice.OpenEndpointReader(LibUsbDotNet.Main.ReadEndpointID.Ep01);
-            m_usbReader.DataReceived += new EventHandler<LibUsbDotNet.Main.EndpointDataEventArgs>(UsbReader_DataReceived);
-            m_usbReader.DataReceivedEnabled = true;
-
-            Log("Opened device {0}", m_usbDevice.UsbRegistryInfo.SymbolicName);
+            Log("No device found with VID={0:X4} PID={1:X4}", m_usbFinder.Vid, m_usbFinder.Pid);
+            return;
         }
+        
+        transmitButton.Enabled = true;
+        
+        m_usbReader = m_usbDevice.OpenEndpointReader(LibUsbDotNet.Main.ReadEndpointID.Ep01);
+        m_usbReader.DataReceived += new EventHandler<LibUsbDotNet.Main.EndpointDataEventArgs>(UsbReader_DataReceived);
+        m_usbReader.DataReceivedEnabled = true;
+
+        // UsbRegistryInfo is null in Linux, so only include it if defined.
+        //
+        string sSymbolicInfo = m_usbDevice.UsbRegistryInfo == null ? string.Empty :
+            string.Format(" ({0})", m_usbDevice.UsbRegistryInfo.SymbolicName);
+        Log("Opened device VID={0:X4} PID={1:X4}{2}.",
+            m_usbDevice.Info.Descriptor.VendorID, m_usbDevice.Info.Descriptor.ProductID, sSymbolicInfo);
     }
 
     /// <summary>
@@ -190,6 +199,11 @@ public partial class Form1 : Form
 
         richTextBoxLog.AppendText(string.Format(sText, values) + "\n");
         richTextBoxLog.ScrollToCaret();
+    }
+
+    void Form1_Shown(object sender, EventArgs e)
+    {
+        OpenUsbDevice();
     }
 
     void Form1_FormClosed(object sender, FormClosedEventArgs e)
