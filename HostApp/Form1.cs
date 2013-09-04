@@ -209,6 +209,8 @@ public partial class Form1 : Form
     void Form1_FormClosed(object sender, FormClosedEventArgs e)
     {
         CloseUsbDevice();
+        m_usbNotifier.Enabled = false;
+        LibUsbDotNet.UsbDevice.Exit();        
     }
 }
 }
