@@ -109,3 +109,5 @@ http://msdn.microsoft.com/en-us/library/windows/hardware/hh450799(v=vs.85).aspx
   <dt>2013-06-04</dt>
   <dd>Initial commit of functional code.</dd>
 </dl>
+
+[![githalytics.com alpha](https://cruel-carlota.pagodabox.com/be1ae981abddbf9d29f15a109a8c2543 "githalytics.com")](http://githalytics.com/BrandonLWhite/Stellaris-LaunchPad-UsbDevBulk-AutoWinusbInstall)
